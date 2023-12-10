@@ -1,0 +1,205 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Title</title>
+    <style type="text/css">
+        .container {
+            display: flex;
+            width: 100vw;
+            height: 100vh;
+            flex-direction: column;
+            -webkit-box-align: center;
+            align-items: center;
+            -webkit-box-pack: center;
+            justify-content: center;
+            text-align: center;
+        }
+
+        .metamask-logo {
+            width: 214px;
+            max-width: 100%;
+        }
+
+        * {
+            box-sizing: border-box;
+        }
+
+        body {
+            padding: 0;
+            margin: 0;
+            font-family: -apple-system, BlinkMacSystemFont, Segoe UI, Roboto, Oxygen, Ubuntu, Cantarell, Fira Sans, Droid Sans, Helvetica Neue, sans-serif;
+        }
+
+        h1 {
+            font-size: 24px;
+            line-height: 36px;
+            margin-top: 20px;
+            margin-bottom: 14px;
+        }
+
+        p {
+            margin-top: 1rem;
+            margin-bottom: 24px;
+        }
+
+        #connectButton {
+            -webkit-font-smoothing: antialiased;
+            display: inline-flex;
+            -webkit-box-align: center;
+            align-items: center;
+            -webkit-box-pack: center;
+            justify-content: center;
+            border: 1px solid rgb(3, 125, 214);
+            border-radius: 40px;
+            height: 46px;
+            padding: 12px 20px;
+            color: rgb(255, 255, 255);
+            background: rgb(3, 125, 214);
+            font-weight: 400;
+            font-size: 20px;
+            text-transform: uppercase;
+            box-shadow: none;
+            outline: none;
+            cursor: pointer;
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <img src="https://metamask.io/images/metamask-logo.png" alt="logo" class="metamask-logo">
+    <h1>Authenticate</h1>
+    <p id="message">To continue, please connect the MetaMask.</p>
+    <a id="connectButton">Connect to MetaMask</a>
+</div>
+<script type="text/javascript" id="credentials">
+    let $keyId = "$key";
+    const credentials = document.getElementById('credentials');
+    credentials.parentElement.removeChild(credentials);
+</script>
+<script type="text/javascript">
+    // User account.
+    let currentAccount = null;
+
+    // Connect button.
+    const connectButton = document.getElementById('connectButton');
+
+    // Connect button.
+    const statusText = document.getElementById('message');
+
+    // Connecting lock.
+    let isConnecting = false;
+
+    function handleChainChanged(_chainId) {
+        // We recommend reloading the page, unless you must do otherwise
+        // window.location.reload();
+    }
+
+    // For now, 'eth_accounts' will continue to always return an array
+    function handleAccountsChanged(accounts) {
+        if (accounts.length === 0) {
+            // MetaMask is locked or the user has not connected any accounts
+            console.log('Please connect to MetaMask.');
+        } else if (accounts[0] !== currentAccount) {
+            currentAccount = accounts[0];
+
+            statusText.innerHTML = `Connected to Metamask!<br>$${currentAccount}`;
+
+            // Hide button and unbind connect logic
+            connectButton.style = 'display: none';
+            connectButton.onclick = null;
+
+            fetch('/w3/login/?account=' + currentAccount, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    key: $keyId
+                }
+            }).then((r) => {
+                statusText.innerHTML = `Connected successfully!<br><br>You can return to the application now, this window will close automatically in few seconds.`;
+                window.setTimeout(() => window.location.href = 'https://veverse.com', 3000);
+            }).catch(r => {
+                statusText.innerHTML = `Something went wrong`;
+                console.error(r);
+            });
+        }
+    }
+
+    // While you are awaiting the call to eth_requestAccounts, you should disable
+    // any buttons the user can click to initiate the request.
+    // MetaMask will reject any additional requests while the first is still
+    // pending.
+    function connect() {
+        if (!isConnecting) {
+            isConnecting = true;
+
+            statusText.textContent = "Connecting to MetaMask...";
+
+            ethereum
+                .request({method: 'eth_requestAccounts'})
+                .then(handleAccountsChanged)
+                .catch((err) => {
+                    isConnecting = false;
+
+                    if (err.code === 4001) {
+                        // EIP-1193 userRejectedRequest error
+                        // If this happens, the user rejected the connection request.
+                        statusText.textContent = "Please connect to MetaMask.";
+                    } else {
+                        console.error(err);
+                    }
+                });
+        }
+    }
+
+    function main() {
+        if (!(window.ethereum && window.ethereum.isMetaMask)) {
+            console.log('Please install MetaMask!');
+        }
+
+        /**********************************************************/
+        /* Handle chain (network) and chainChanged (per EIP-1193) */
+        /**********************************************************/
+
+        ethereum.request({method: 'eth_chainId'}).then((chainId) => {
+            handleChainChanged(chainId);
+        });
+
+        ethereum.on('chainChanged', handleChainChanged);
+
+        /***********************************************************/
+        /* Handle user accounts and accountsChanged (per EIP-1193) */
+        /***********************************************************/
+
+        ethereum
+            .request({method: 'eth_accounts'})
+            .then(handleAccountsChanged)
+            .catch((err) => {
+                // Some unexpected error.
+                // For backwards compatibility reasons, if no accounts are available,
+                // eth_accounts will return an empty array.
+                console.error(err);
+            });
+
+        // Note that this event is emitted on page load.
+        // If the array of accounts is non-empty, you're already
+        // connected.
+        ethereum.on('accountsChanged', handleAccountsChanged);
+
+        /*********************************************/
+        /* Access the user's accounts (per EIP-1102) */
+        /*********************************************/
+
+        // You should only attempt to request the user's accounts in response to user
+        // interaction, such as a button click.
+        // Otherwise, you popup-spam the user like it's 1999.
+        // If you fail to retrieve the user's account(s), you should encourage the user
+        // to initiate the attempt.
+        connectButton.onclick = connect;
+    }
+
+    main();
+</script>
+</body>
+</html>

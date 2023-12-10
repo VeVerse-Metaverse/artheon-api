@@ -1,0 +1,94 @@
+variables:
+  WERF_VERSION: 1.2 ea
+
+stages:
+#  - build
+  - deploy
+#  - cleanup
+
+before_script:
+  - source ~/.bashrc
+  - type multiwerf && source $(multiwerf use ${WERF_VERSION} --as-file)
+  - type werf && source $(werf ci-env gitlab --as-file)
+
+#region Build
+
+#Build:
+#  stage: build
+#  script:
+#    - werf build
+#  except:
+#    - schedules
+#  tags:
+#    - werf
+#  when: manual
+
+#endregion
+
+#region Deploy
+
+.deploy:
+  stage: deploy
+  script:
+    - werf converge
+      --namespace ${CI_NAMESPACE}
+      --set "global.ci_url=$(cut -d / -f 3 <<< $CI_ENVIRONMENT_URL)"
+  tags:
+    - werf
+
+Deploy to Dev:
+  extends: .deploy
+  environment:
+    name: dev
+    url: http://dev.9xn71nxgoa.veverse.com
+  variables:
+    CI_NAMESPACE: artheon-api-dev
+    ENVIRONMENT: dev
+  only:
+    - branches
+  tags:
+    - aws
+
+Deploy to Test:
+  extends: .deploy
+  environment:
+    name: test
+    url: http://test.9xn71nxgoa.veverse.com
+  variables:
+    CI_NAMESPACE: artheon-api-test
+    ENVIRONMENT: test
+  only:
+    - branches
+  when: manual
+  tags:
+    - aws
+
+Deploy to Production:
+  extends: .deploy
+  environment:
+    name: prod
+    url: http://9xn71nxgoa.veverse.com
+  variables:
+    CI_NAMESPACE: artheon-api-prod
+    ENVIRONMENT: prod
+  only:
+    - tags
+  when: manual
+  tags:
+    - aws
+
+#endregion
+
+#region Cleanup
+
+#Cleanup:
+#  stage: cleanup
+#  script:
+#    - docker login -u ${WERF_REGISTRY_USER} -p ${WERF_REGISTRY_PASS} ${WERF_REPO}
+#    - werf cleanup
+#    - werf host cleanup
+#  when: manual
+#  tags:
+#    - werf
+
+#endregion

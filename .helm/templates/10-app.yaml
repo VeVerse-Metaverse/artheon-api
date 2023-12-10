@@ -1,0 +1,157 @@
+# Api deployment
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ .Chart.Name }}
+  labels:
+    app: {{ .Chart.Name }}
+spec:
+  selector:
+    matchLabels:
+      app: {{ .Chart.Name }}
+  template:
+    metadata:
+      labels:
+        app: {{ .Chart.Name }}
+    spec:
+      serviceAccountName: veverse-acc # {{ template "api.fullname" . }}-sa
+      imagePullSecrets:
+        - name: registrysecret
+      containers:
+        - name: api
+          image: {{ .Values.werf.image.api }}
+          ports:
+            - name: http-app
+              containerPort: 8000
+          env:
+            - name: ENVIRONMENT
+              value: {{ .Values.global.env | default "dev" }}
+            - name: MODULE_NAME
+              value: {{ pluck .Values.global.env .Values.app.api.module_name | first | default .Values.app.api.module_name._default }}
+            - name: VARIABLE_NAME
+              value: {{ pluck .Values.global.env .Values.app.api.variable_name | first | default .Values.app.api.variable_name._default }}
+            - name: MAX_WORKERS
+              value: {{ pluck .Values.global.env .Values.app.api.max_workers | first | default .Values.app.api.max_workers._default | quote }}
+            - name: TIMEOUT
+              value: {{ pluck .Values.global.env .Values.app.api.timeout | first | default .Values.app.api.timeout._default | quote }}
+            - name: LOG_LEVEL
+              value: {{ pluck .Values.global.env .Values.app.api.log_level | first | default .Values.app.api.log_level._default | quote }}
+            - name: DB_HOST
+              value: {{ pluck .Values.global.env .Values.app.db.host | first | default .Values.app.db.host._default }}
+            - name: DB_PORT
+              value: {{ pluck .Values.global.env .Values.app.db.port | first | default .Values.app.db.port._default | quote }}
+            - name: DB_USER
+              value: {{ pluck .Values.global.env .Values.app.db.user | first | default .Values.app.db.user._default }}
+            - name: DB_PASS
+              value: {{ pluck .Values.global.env .Values.app.db.password | first | default .Values.app.db.password._default }}
+            - name: DB_NAME
+              value: {{ pluck .Values.global.env .Values.app.db.name | first | default .Values.app.db.name._default }}
+            - name: GAME_SERVER_IMAGE
+              value: {{ pluck .Values.global.env .Values.app.gs.image | first | default .Values.app.gs.image._default }}
+            - name: GAME_SERVER_KEY
+              value: {{ pluck .Values.global.env .Values.app.gs.key | first | default .Values.app.gs.key._default }}
+            - name: GAME_SERVER_HOST
+              value: {{ pluck .Values.global.env .Values.app.gs.host | first | default .Values.app.gs.host._default }}
+            - name: GAME_SERVER_NAMESPACE
+              value: {{ pluck .Values.global.env .Values.app.gs.namespace | first | default .Values.app.gs.host._default }}
+            - name: GAME_SERVER_EMAIL
+              value: {{ pluck .Values.global.env .Values.app.gs.email | first | default .Values.app.gs.email._default }}
+            - name: GAME_SERVER_PASSWORD
+              value: {{ pluck .Values.global.env .Values.app.gs.password | first | default .Values.app.gs.password._default }}
+            - name: AWS_ACCESS_KEY_ID
+              value: {{ pluck .Values.global.env .Values.app.aws.id | first | default .Values.app.aws.id._default }}
+            - name: AWS_SECRET_ACCESS_KEY
+              value: {{ pluck .Values.global.env .Values.app.aws.key | first | default .Values.app.aws.key._default }}
+            - name: STRIPE_WEBHOOK_ENDPOINT_SECRET
+              value: {{ pluck .Values.global.env .Values.app.stripe.webhook_secret | first | default .Values.app.stripe.webhook_secret._default }}
+
+# Cluster IP
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ .Chart.Name }}
+spec:
+  selector:
+    app: {{ .Chart.Name }}
+  clusterIP: None
+  ports:
+    - name: http-app
+      port: 8000
+    - name: http
+      port: 80
+  type: ClusterIP
+
+# Ingress
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  annotations:
+    # kubernetes.io/ingress.class: nginx
+    nginx.ingress.kubernetes.io/proxy-body-size: "3000m"
+    nginx.ingress.kubernetes.io/proxy-read-timeout: "600"
+    nginx.ingress.kubernetes.io/proxy-send-timeout: "600"
+  name: {{ .Chart.Name }}
+spec:
+  rules:
+    - host: {{ .Values.global.ci_url }}
+      http:
+        paths:
+          - backend:
+              service:
+                name: {{ .Chart.Name }}
+                port: 
+                  name: http
+            path: /
+            pathType: Prefix
+  tls:
+    - hosts:
+        - {{ .Values.global.ci_url }}
+      secretName: ingress-tls
+
+# HTTPS certificate manager
+---
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: {{ .Chart.Name }}
+spec:
+  #acme:
+  #  config:
+  #    - domains:
+  #        - {{ .Values.global.ci_url }}
+  #      http01:
+  #        ingressClass: nginx
+  dnsNames:
+    - {{ .Values.global.ci_url }}
+  issuerRef:
+    kind: ClusterIssuer
+    name: letsencrypt
+  secretName: ingress-tls
+
+# Pod autoscaling
+---
+apiVersion: autoscaling.k8s.io/v1
+kind: VerticalPodAutoscaler
+metadata:
+  name: {{ .Chart.Name }}
+  labels:
+    name: {{ .Chart.Name }}
+spec:
+  targetRef:
+    apiVersion: "apps/v1"
+    kind: Deployment
+    name: {{ .Chart.Name }}
+  updatePolicy:
+    updateMode: "Auto"
+  resourcePolicy:
+    containerPolicies:
+      - containerName: backend
+        minAllowed:
+          memory: "1Gi"
+          cpu: "2"
+        maxAllowed:
+          memory: "8Gi"
+          cpu: "8"
+        mode: Auto

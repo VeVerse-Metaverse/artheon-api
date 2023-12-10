@@ -1,0 +1,9 @@
+.idea
+venv
+__pycache__
+.coverage
+htmlcov
+venv/*
+.env
+.vscode
+/venv_old/

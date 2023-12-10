@@ -1,0 +1,429 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Title</title>
+    <style type="text/css">
+        .container {
+            display: flex;
+            width: 100vw;
+            height: 100vh;
+            flex-direction: column;
+            -webkit-box-align: center;
+            align-items: center;
+            -webkit-box-pack: center;
+            justify-content: center;
+            text-align: center;
+        }
+
+        .metamask-logo {
+            width: 107px;
+            max-width: 100%;
+        }
+
+        * {
+            box-sizing: border-box;
+        }
+
+        body {
+            padding: 0;
+            margin: 0;
+            font-family: -apple-system, BlinkMacSystemFont, Segoe UI, Roboto, Oxygen, Ubuntu, Cantarell, Fira Sans, Droid Sans, Helvetica Neue, sans-serif;
+        }
+
+        h1 {
+            font-size: 32px;
+            line-height: 36px;
+            margin-top: 20px;
+            margin-bottom: 14px;
+        }
+
+        h2 {
+            font-size: 24px;
+            line-height: 36px;
+            margin-top: 20px;
+            margin-bottom: 14px;
+        }
+
+        p {
+            margin-top: 1rem;
+            margin-bottom: 24px;
+        }
+
+        ul {
+            margin: 0;
+            list-style: none;
+            padding: 0;
+        }
+
+        #connectButton {
+            -webkit-font-smoothing: antialiased;
+            display: inline-flex;
+            -webkit-box-align: center;
+            align-items: center;
+            -webkit-box-pack: center;
+            justify-content: center;
+            border: 1px solid rgb(3, 125, 214);
+            border-radius: 40px;
+            height: 46px;
+            padding: 12px 20px;
+            color: rgb(255, 255, 255);
+            background: rgb(3, 125, 214);
+            font-weight: 400;
+            font-size: 20px;
+            text-transform: uppercase;
+            box-shadow: none;
+            outline: none;
+            cursor: pointer;
+        }
+
+        #confirmButton {
+            -webkit-font-smoothing: antialiased;
+            /* display: inline-flex; */
+            /* hide the button at page load */
+            display: none;
+            -webkit-box-align: center;
+            align-items: center;
+            -webkit-box-pack: center;
+            justify-content: center;
+            border: 1px solid rgb(3, 125, 214);
+            border-radius: 40px;
+            height: 46px;
+            padding: 12px 20px;
+            color: rgb(255, 255, 255);
+            background: rgb(3, 125, 214);
+            font-weight: 400;
+            font-size: 20px;
+            text-transform: uppercase;
+            box-shadow: none;
+            outline: none;
+            cursor: pointer;
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <img src="https://metamask.io/images/metamask-logo.png" alt="logo" class="metamask-logo">
+    <h1>VeVerse</h1>
+    <h2>Mint a land</h2>
+    <div id="land-info">
+        <ul>
+            <li id="land-name"><span>Token Id:</span> $tokenId</li>
+        </ul>
+    </div>
+    <p id="status">To continue, please connect the MetaMask.</p>
+    <a id="connectButton">Connect to MetaMask</a>
+</div>
+<script type="text/javascript" id="credentials">
+    const $keyId = "$key";
+    const tokenId = $tokenId;
+    const credentials = document.getElementById('credentials');
+    credentials.parentElement.removeChild(credentials);
+</script>
+<script type="module">
+    // noinspection JSFileReferences
+    import {ethers} from "/static/ethers-5.2.esm.min.js";
+
+    // Buttons
+    const connectButton = document.getElementById('connectButton');
+
+    // Status text element reference
+    const statusText = document.getElementById('status');
+
+    const abi = [
+        {
+            "anonymous": false,
+            "inputs": [{"indexed": true, "internalType": "address", "name": "owner", "type": "address"}, {
+                "indexed": true,
+                "internalType": "address",
+                "name": "approved",
+                "type": "address"
+            }, {"indexed": true, "internalType": "uint256", "name": "tokenId", "type": "uint256"}],
+            "name": "Approval",
+            "type": "event"
+        }, {
+            "anonymous": false,
+            "inputs": [{"indexed": true, "internalType": "address", "name": "owner", "type": "address"}, {
+                "indexed": true,
+                "internalType": "address",
+                "name": "operator",
+                "type": "address"
+            }, {"indexed": false, "internalType": "bool", "name": "approved", "type": "bool"}],
+            "name": "ApprovalForAll",
+            "type": "event"
+        }, {
+            "anonymous": false,
+            "inputs": [{"indexed": true, "internalType": "address", "name": "previousOwner", "type": "address"}, {"indexed": true, "internalType": "address", "name": "newOwner", "type": "address"}],
+            "name": "OwnershipTransferred",
+            "type": "event"
+        }, {"anonymous": false, "inputs": [{"indexed": false, "internalType": "address", "name": "account", "type": "address"}], "name": "Paused", "type": "event"}, {
+            "anonymous": false,
+            "inputs": [{"indexed": true, "internalType": "address", "name": "from", "type": "address"}, {"indexed": true, "internalType": "address", "name": "to", "type": "address"}, {
+                "indexed": true,
+                "internalType": "uint256",
+                "name": "tokenId",
+                "type": "uint256"
+            }],
+            "name": "Transfer",
+            "type": "event"
+        }, {"anonymous": false, "inputs": [{"indexed": false, "internalType": "address", "name": "account", "type": "address"}], "name": "Unpaused", "type": "event"}, {
+            "inputs": [],
+            "name": "MAX_APARTMENT_ID",
+            "outputs": [{"internalType": "uint256", "name": "", "type": "uint256"}],
+            "stateMutability": "view",
+            "type": "function"
+        }, {
+            "inputs": [{"internalType": "address", "name": "to", "type": "address"}, {"internalType": "uint256", "name": "tokenId", "type": "uint256"}],
+            "name": "approve",
+            "outputs": [],
+            "stateMutability": "nonpayable",
+            "type": "function"
+        }, {
+            "inputs": [{"internalType": "address", "name": "owner", "type": "address"}],
+            "name": "balanceOf",
+            "outputs": [{"internalType": "uint256", "name": "", "type": "uint256"}],
+            "stateMutability": "view",
+            "type": "function"
+        }, {
+            "inputs": [{"internalType": "uint256", "name": "tokenId", "type": "uint256"}],
+            "name": "getApproved",
+            "outputs": [{"internalType": "address", "name": "", "type": "address"}],
+            "stateMutability": "view",
+            "type": "function"
+        }, {"inputs": [], "name": "initialize", "outputs": [], "stateMutability": "nonpayable", "type": "function"}, {
+            "inputs": [{
+                "internalType": "address",
+                "name": "owner",
+                "type": "address"
+            }, {"internalType": "address", "name": "operator", "type": "address"}],
+            "name": "isApprovedForAll",
+            "outputs": [{"internalType": "bool", "name": "", "type": "bool"}],
+            "stateMutability": "view",
+            "type": "function"
+        }, {
+            "inputs": [],
+            "name": "maxMintableTokenId",
+            "outputs": [{"internalType": "uint256", "name": "", "type": "uint256"}],
+            "stateMutability": "view",
+            "type": "function"
+        }, {
+            "inputs": [{"internalType": "uint256", "name": "_tokenId", "type": "uint256"}, {"internalType": "uint256", "name": "_maxBatchId", "type": "uint256"}],
+            "name": "mint",
+            "outputs": [],
+            "stateMutability": "payable",
+            "type": "function"
+        }, {"inputs": [], "name": "name", "outputs": [{"internalType": "string", "name": "", "type": "string"}], "stateMutability": "view", "type": "function"}, {
+            "inputs": [],
+            "name": "owner",
+            "outputs": [{"internalType": "address", "name": "", "type": "address"}],
+            "stateMutability": "view",
+            "type": "function"
+        }, {
+            "inputs": [{"internalType": "uint256", "name": "tokenId", "type": "uint256"}],
+            "name": "ownerOf",
+            "outputs": [{"internalType": "address", "name": "", "type": "address"}],
+            "stateMutability": "view",
+            "type": "function"
+        }, {"inputs": [], "name": "paused", "outputs": [{"internalType": "bool", "name": "", "type": "bool"}], "stateMutability": "view", "type": "function"}, {
+            "inputs": [{
+                "internalType": "uint256",
+                "name": "",
+                "type": "uint256"
+            }], "name": "prices", "outputs": [{"internalType": "uint256", "name": "", "type": "uint256"}], "stateMutability": "view", "type": "function"
+        }, {"inputs": [], "name": "renounceOwnership", "outputs": [], "stateMutability": "nonpayable", "type": "function"}, {
+            "inputs": [{
+                "internalType": "address",
+                "name": "from",
+                "type": "address"
+            }, {"internalType": "address", "name": "to", "type": "address"}, {"internalType": "uint256", "name": "tokenId", "type": "uint256"}],
+            "name": "safeTransferFrom",
+            "outputs": [],
+            "stateMutability": "nonpayable",
+            "type": "function"
+        }, {
+            "inputs": [{"internalType": "address", "name": "from", "type": "address"}, {"internalType": "address", "name": "to", "type": "address"}, {
+                "internalType": "uint256",
+                "name": "tokenId",
+                "type": "uint256"
+            }, {"internalType": "bytes", "name": "_data", "type": "bytes"}], "name": "safeTransferFrom", "outputs": [], "stateMutability": "nonpayable", "type": "function"
+        }, {
+            "inputs": [{"internalType": "address", "name": "operator", "type": "address"}, {"internalType": "bool", "name": "approved", "type": "bool"}],
+            "name": "setApprovalForAll",
+            "outputs": [],
+            "stateMutability": "nonpayable",
+            "type": "function"
+        }, {
+            "inputs": [{"internalType": "uint256", "name": "_maxBatchId", "type": "uint256"}, {"internalType": "uint256", "name": "_gasCoinAmount", "type": "uint256"}, {
+                "internalType": "uint256",
+                "name": "_maxMintableTokenId",
+                "type": "uint256"
+            }], "name": "setMintingRules", "outputs": [], "stateMutability": "nonpayable", "type": "function"
+        }, {
+            "inputs": [{"internalType": "bool", "name": "_paused", "type": "bool"}],
+            "name": "setPaused",
+            "outputs": [],
+            "stateMutability": "nonpayable",
+            "type": "function"
+        }, {
+            "inputs": [{"internalType": "bytes4", "name": "interfaceId", "type": "bytes4"}],
+            "name": "supportsInterface",
+            "outputs": [{"internalType": "bool", "name": "", "type": "bool"}],
+            "stateMutability": "view",
+            "type": "function"
+        }, {"inputs": [], "name": "symbol", "outputs": [{"internalType": "string", "name": "", "type": "string"}], "stateMutability": "view", "type": "function"}, {
+            "inputs": [{
+                "internalType": "uint256",
+                "name": "_tokenId",
+                "type": "uint256"
+            }], "name": "tokenURI", "outputs": [{"internalType": "string", "name": "", "type": "string"}], "stateMutability": "pure", "type": "function"
+        }, {
+            "inputs": [{"internalType": "address", "name": "from", "type": "address"}, {"internalType": "address", "name": "to", "type": "address"}, {
+                "internalType": "uint256",
+                "name": "tokenId",
+                "type": "uint256"
+            }], "name": "transferFrom", "outputs": [], "stateMutability": "nonpayable", "type": "function"
+        }, {"inputs": [{"internalType": "address", "name": "newOwner", "type": "address"}], "name": "transferOwnership", "outputs": [], "stateMutability": "nonpayable", "type": "function"}
+    ];
+
+    const provider = new ethers.providers.Web3Provider(window.ethereum);
+    const signer = provider.getSigner();
+
+    // The contract object
+    const nftContract = new ethers.Contract('0x8a5007EedB09B4cB423eE12773e1C8f43741D335', abi, signer);
+
+    let result = nftContract.mint(tokenId, 999, {value: '100000000000000000'})
+        .then(console.log)
+        .catch((e) => {
+            if (e.hasOwnProperty('error')) {
+                if (e.error.hasOwnProperty('message')) {
+                    if (typeof e.error.message['includes'] == 'function' && e.error.message.includes('token already minted')) {
+                        statusText.innerHTML = `<span style="font-weight: bold; color: darkred;">Error</span>: Token already minted`;
+                    } else {
+                        statusText.innerHTML = e.error.message;
+                    }
+                } else {
+                    statusText.innerHTML = e.toString();
+                }
+            } else {
+                if (e.hasOwnProperty('message')) {
+                    statusText.innerHTML = e.message;
+                } else {
+                    statusText.innerHTML = e.toString();
+                }
+            }
+        });
+
+    // User account
+    let currentAccount = null;
+
+    // Connecting lock.
+    let isConnecting = false;
+
+    function handleChainChanged(_chainId) {
+        // We recommend reloading the page, unless you must do otherwise
+        // window.location.reload();
+    }
+
+    // For now, 'eth_accounts' will continue to always return an array
+    function handleAccountsChanged(accounts) {
+        if (accounts.length === 0) {
+            // MetaMask is locked or the user has not connected any accounts
+            console.log('Please connect to MetaMask.');
+        } else if (accounts[0] !== currentAccount) {
+            currentAccount = accounts[0];
+
+            statusText.innerHTML = `Connected to Metamask`;
+
+            // Hide button and unbind connect logic
+            connectButton.style.display = 'none';
+            connectButton.onclick = null;
+
+            fetch('/w3/login/?account=' + currentAccount, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    key: $keyId
+                }
+            }).then((r) => {
+                // show confirm world mint button
+            }).catch(r => {
+                statusText.innerHTML = `Something went wrong`;
+                console.error(r);
+            });
+        }
+    }
+
+    // While you are awaiting the call to eth_requestAccounts, you should disable
+    // any buttons the user can click to initiate the request.
+    // MetaMask will reject any additional requests while the first is still
+    // pending.
+    function connect() {
+        if (!isConnecting) {
+            isConnecting = true;
+
+            statusText.textContent = "Connecting to MetaMask...";
+
+            ethereum
+                .request({method: 'eth_requestAccounts'})
+                .then(handleAccountsChanged)
+                .catch((err) => {
+                    isConnecting = false;
+
+                    if (err.code === 4001) {
+                        // EIP-1193 userRejectedRequest error
+                        // If this happens, the user rejected the connection request.
+                        statusText.textContent = "Please connect to MetaMask.";
+                    } else {
+                        console.error(err);
+                    }
+                });
+        }
+    }
+
+    function main() {
+        if (!(window.ethereum && window.ethereum.isMetaMask)) {
+            console.log('Please install MetaMask!');
+        }
+
+        /**********************************************************/
+        /* Handle chain (network) and chainChanged (per EIP-1193) */
+        /**********************************************************/
+
+        ethereum.request({method: 'eth_chainId'}).then((chainId) => {
+            handleChainChanged(chainId);
+        });
+
+        ethereum.on('chainChanged', handleChainChanged);
+
+        /***********************************************************/
+        /* Handle user accounts and accountsChanged (per EIP-1193) */
+        /***********************************************************/
+
+        ethereum
+            .request({method: 'eth_accounts'})
+            .then(handleAccountsChanged)
+            .catch((err) => {
+                // Some unexpected error.
+                // For backwards compatibility reasons, if no accounts are available,
+                // eth_accounts will return an empty array.
+                console.error(err);
+            });
+
+        // Note that this event is emitted on page load.
+        // If the array of accounts is non-empty, you're already
+        // connected.
+        ethereum.on('accountsChanged', handleAccountsChanged);
+
+        /*********************************************/
+        /* Access the user's accounts (per EIP-1102) */
+        /*********************************************/
+
+        // Request the user's accounts by user initiated event.
+        connectButton.onclick = connect;
+    }
+
+    main();
+</script>
+</body>
+</html>

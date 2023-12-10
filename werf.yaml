@@ -1,0 +1,32 @@
+project: veverse-api
+configVersion: 1
+---
+image: api
+from: tiangolo/uvicorn-gunicorn-fastapi:python3.9-slim
+git:
+  - add: /
+    to: /app
+    excludePaths:
+      - .gitlab-ci.yml
+      - werf.yaml
+      - .helm
+      - .werf
+      - .gitignore
+    stageDependencies:
+      install:
+        - "requirements.txt"
+shell:
+  beforeInstall:
+    - apt-get update
+    - apt-get install -y libmagic-dev
+    - apt-get install -y poppler-utils
+  install:
+    - echo "installing $WERF_COMMIT_HASH"
+    - /usr/local/bin/python -m pip install --upgrade pip
+    - pip install -r app/requirements.txt
+docker:
+  ENV:
+    FORWARDED_ALLOW_IPS: "*"
+  WORKDIR: /app
+
+

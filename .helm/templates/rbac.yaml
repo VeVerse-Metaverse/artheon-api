@@ -1,0 +1,45 @@
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: {{ template "api.fullname" . }}
+  labels:
+    app: {{ template "api.name" . }}
+    chart: {{ template "api.chart" .  }}
+    release: "{{ .Release.Name }}"
+    heritage: "{{ .Release.Service }}"
+rules:
+- apiGroups: ["stable.veverse.com"]
+  resources: ["gameservers", "gameserver", "gs"]
+  verbs: ["create", "delete", "list"]
+- apiGroups: [""]
+  resources: ["secrets"]
+  verbs: ["get"]
+---
+kind: ClusterRoleBinding
+apiVersion: rbac.authorization.k8s.io/v1
+metadata:
+  name: {{ template "api.fullname" . }}
+  labels:
+    app: {{ template "api.name" . }}
+    chart: {{ template "api.chart" .  }}
+    release: "{{ .Release.Name }}"
+    heritage: "{{ .Release.Service }}"
+subjects:
+- kind: ServiceAccount
+  name: veverse-acc # {{ template "api.fullname" . }}-sa
+  namespace: {{ pluck .Values.werf.env .Values.clusterrolebinding.namespace | first | default .Values.clusterrolebinding.namespace._default }}
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: {{ template "api.fullname" . }}
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: veverse-acc  # {{ template "api.fullname" . }}-sa
+  labels:
+    app: {{ template "api.name" . }}
+    chart: {{ template "api.chart" .  }}
+    release: "{{ .Release.Name }}"
+    heritage: "{{ .Release.Service }}"

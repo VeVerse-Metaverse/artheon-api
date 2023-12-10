@@ -1,0 +1,74 @@
+app:
+  api:
+    command: .
+    log_level:
+      _default: DEBUG
+    max_workers:
+      _default: 4
+      prod: 4
+    module_name:
+      _default: app.main
+    variable_name:
+      _default: app
+    timeout:
+      _default: 600
+  db:
+    host:
+      _default: localhost
+      dev: "db.example.com"
+      test: "db.example.com"
+      prod: "db.example.com"
+    port:
+      _default: 5432
+      dev: "5432"
+      test: "5432"
+      prod: "5432"
+    user:
+      _default: "postgres"
+      dev: "dev"
+      test: "test"
+      prod: "prod"
+    name:
+      _default: "dev"
+      dev: "dev"
+      test: "test"
+      prod: "prod"
+    password:
+      _default: "postgres"
+      dev: "password"
+      test: "password"
+      prod: "password"
+  stripe:
+    webhook_secret:
+      _default: "xxxxxx"
+  gs:
+    namespace:
+      _default: "veverse-gs"
+      dev: "veverse-gs-dev"
+      test: "veverse-gs-test"
+      prod: "veverse-gs-prod"
+    host:
+      _default: "kx72bxa91b.veverse.com"
+    image:
+      _default: "registry.dev.hackerman.me/artheon/linux-server-deployment:gs-latest"
+    key:
+      _default: "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+    email:
+      _default: "gameserver@example.com"
+    password:
+      _default: "password"
+
+## String to partially override gs.fullname template (will maintain the release name)
+##
+# nameOverride:
+
+## String to fully override gs.fullname template
+##
+# fullnameOverride:
+
+clusterrolebinding:
+  namespace:
+    _default: veverse-api-dev
+    prod: veverse-api-prod
+    dev: veverse-api-dev
+    test: veverse-api-test

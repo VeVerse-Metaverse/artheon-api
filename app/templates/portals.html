@@ -1,0 +1,413 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Title</title>
+    <style type="text/css">
+        .container {
+            display: flex;
+            flex-direction: row;
+        }
+
+        .half {
+            display: flex;
+            flex-direction: column;
+            flex: 1 1 50%;
+        }
+
+        pre {
+            background-color: lightgray;
+            border: 1px solid gray;
+        }
+
+        table th, table td {
+            border: 1px solid gray;
+            padding: 3px 7px;
+        }
+
+        .list table td input, .list table td select {
+            font-family: monospace;
+        }
+
+        .list table td select {
+            width: 255px;
+        }
+
+        .create label a {
+            display: inline-block;
+            width: 100px;
+        }
+
+        .create label input {
+            width: 200px;
+        }
+
+        .create label select {
+            width: 400px;
+        }
+
+        .list .input-id {
+            width: 280px;
+        }
+    </style>
+</head>
+<body>
+<div class="container">
+    <div class="half">
+        <div>
+            <h3>Authenticate</h3>
+            <label>
+                User Key
+                <input id="userKey" type="password" value="">
+            </label>
+            <button id="authenticateBtn">Authenticate</button>
+        </div>
+        <div class="create">
+            <h3>Create</h3>
+            <p>
+                <label>
+                    <a title="Name of the portal">Name*</a>
+                    <input type="text" id="portalName">
+                </label>
+                <br>
+                <label>
+                    <a title="Destination portal, the exit point portal">Destination*</a>
+                    <select id="selectDestination">
+                    </select>
+                    <input type="text" id="findDestination">
+                    <button id="findDestinationBtn">Search</button>
+                </label>
+                <br>
+                <label>
+                    <a title="Space where the portal will be located at">Space*</a>
+                    <select id="selectSpace">
+                    </select>
+                    <input type="text" id="findSpace">
+                    <button id="findSpaceBtn">Search</button>
+                </label>
+                <br>
+                <button id="createPortalBtn">Create Portal</button>
+            </p>
+        </div>
+        <div class="list">
+            <h3>List</h3>
+            <div>
+                <label><input type="text" id="filterPortals"></label>
+                <button id="filterPortalsBtn">Search</button>
+            </div>
+            <!--suppress HtmlDeprecatedAttribute -->
+            <table cellspacing="0" cellpadding="0">
+                <thead>
+                <tr>
+                    <th><a title="Id of the portal"></a>Id</th>
+                    <th><a title="Portal reference name"></a>Name</th>
+                    <th><a title="Space where the portal is located">Space</a></th>
+                    <th><a title="Destination portal">Destination (Exit portal)</a></th>
+                    <th>Save</th>
+                </tr>
+                </thead>
+                <tbody id="portalList">
+                </tbody>
+            </table>
+            <p><span id="portalListPage">1</span> of <span id="portalListTotalPages">1</span></p>
+            <p>
+                <button id="portalListPrevBtn">Prev</button>
+                <button id="portalListNextBtn">Next</button>
+            </p>
+        </div>
+    </div>
+    <div class="half">
+        <pre id="output"></pre>
+    </div>
+</div>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/uuid/8.1.0/uuidv4.min.js"></script>
+<script>
+    let endpoint = '';
+    let userKey = '';
+
+    // Authentication
+    const userKeyInput = document.getElementById('userKey');
+    const getKey = () => userKeyInput.value;
+    const userKeyInputBtn = document.getElementById('authenticateBtn');
+    userKeyInputBtn.onclick = () => {
+        userKey = userKeyInput.value;
+    }
+
+    // Spaces
+    let spaceNameInput = document.getElementById('portalName');
+    const getSpaceName = () => spaceNameInput.value;
+
+    let findSpaceQueryInput = document.getElementById('findSpace');
+    const getSpaceQuery = () => findSpaceQueryInput.value;
+    const getSpaceId = () => JSON.parse(spaceSelector.value).id;
+    let spaceSelector = document.getElementById('selectSpace');
+    let findSpaceBtn = document.getElementById('findSpaceBtn');
+    findSpaceBtn.onclick = () => {
+        getSpaces(0, 20, getSpaceQuery());
+    }
+
+    function getSpaces(offset = 0, limit = 20, query = '') {
+        spaceSelector.innerHTML = '';
+        fetch(`${endpoint}/spaces?offset=${offset}&limit=${limit}&query=${query}`, {
+            method: "GET",
+            headers: {'Content-Type': 'application/json', 'key': getKey()},
+        }).then(res => {
+            res.json().then((json => {
+                for (let k in json.data.entities) {
+                    if (json.data.entities.hasOwnProperty(k)) {
+                        let entity = json.data.entities[k];
+
+                        var option = document.createElement('option');
+                        option.value = JSON.stringify(entity);
+                        option.innerHTML = entity.name;
+                        spaceSelector.appendChild(option);
+                    }
+                }
+            }));
+        });
+    }
+
+    // Destination portals
+    let findDestinationQueryInput = document.getElementById('findDestination');
+    const getDestinationQuery = () => findDestinationQueryInput.value;
+    const getDestinationId = () => JSON.parse(destinationSelector.value).id;
+    let destinationSelector = document.getElementById('selectDestination');
+    let findDestinationBtn = document.getElementById('findDestinationBtn');
+    findDestinationBtn.onclick = () => {
+        getDestinationPortals(0, 20, getDestinationQuery());
+    }
+
+    function getDestinationPortals(offset = 0, limit = 20, query = '') {
+        destinationSelector.innerHTML = '';
+        fetch(`${endpoint}/portals?offset=${offset}&limit=${limit}&query=${query}`, {
+            method: "GET",
+            headers: {'Content-Type': 'application/json', 'key': getKey()},
+        }).then(res => {
+            res.json().then((json => {
+                for (let k in json.data.entities) {
+                    if (json.data.entities.hasOwnProperty(k)) {
+                        let entity = json.data.entities[k];
+
+                        var option = document.createElement('option');
+                        option.value = JSON.stringify(entity);
+                        option.innerHTML = entity.name;
+                        destinationSelector.appendChild(option);
+                    }
+                }
+            }));
+        });
+    }
+
+    // Create
+    let createPortalBtn = document.getElementById('createPortalBtn');
+    createPortalBtn.onclick = () => {
+        createPortal(getSpaceName(), getDestinationId(), getSpaceId());
+    }
+
+    function createPortal(name, destinationId, spaceId) {
+        fetch(`${endpoint}/portals`, {
+            method: "POST",
+            headers: {'Content-Type': 'application/json', 'key': getKey()},
+            body: JSON.stringify({
+                name,
+                destinationId,
+                spaceId,
+                public: true
+            })
+        }).then(res => {
+            console.log("Request complete! response:", res.json(j => console.log(j)));
+        });
+    }
+
+    // Portal list
+    let portalList = document.getElementById('portalList');
+    let portalListPageLabel = document.getElementById('portalListPage');
+    let portalListTotalPagesLabel = document.getElementById('portalListTotalPages');
+    let portalListPage = 1;
+    let portalListPerPage = 20;
+    let portalTotalPages = 1;
+    let portalListItemTemplate = `
+                    <td>
+                        <input id="id-#id" value="#id" disabled class="input-id">
+                    </td>
+                    <td>
+                        <input id="name-#id" value="#name">
+                    </td>
+                    <td>
+                        <input type="text" id="space-#id" disabled>
+                        <select id="selectSpace-#id"></select>
+                        <input type="text" id="findSpace-#id">
+                        <button id="findSpaceBtn-#id">Search</button>
+                    </td>
+                    <td>
+                        <input type="text" id="destination-#id" disabled>
+                        <select id="selectDestination-#id"></select>
+                        <input type="text" id="findDestination-#id">
+                        <button id="findDestinationBtn-#id">Search</button>
+                    </td>
+                    <td>
+                        <button id="save-#id">Save</button>
+                    </td>`;
+
+    let filterPortalsInput = document.getElementById('filterPortals');
+    const getPortalListQuery = () => filterPortalsInput.value;
+
+    let filterPortalsBtn = document.getElementById('filterPortalsBtn');
+    filterPortalsBtn.onclick = () => {
+        portalListPageLabel.innerText = portalListPage;
+        updatePortalList((portalListPage - 1) * portalListPerPage, portalListPerPage, getPortalListQuery());
+    };
+
+    let portalListPrevBtn = document.getElementById('portalListPrevBtn');
+    portalListPrevBtn.onclick = () => {
+        if (portalListPage > 1) {
+            portalListPage--;
+        }
+        portalListPageLabel.innerText = portalListPage;
+        updatePortalList((portalListPage - 1) * portalListPerPage, portalListPerPage, getPortalListQuery());
+    };
+
+    let portalListNextBtn = document.getElementById('portalListNextBtn');
+    portalListNextBtn.onclick = () => {
+        if (portalListPage < portalTotalPages) {
+            portalListPage++;
+        }
+        portalListPageLabel.innerText = portalListPage;
+        updatePortalList((portalListPage - 1) * portalListPerPage, portalListPerPage, getPortalListQuery());
+    };
+
+    function portalSave(event, entity) {
+        const name = document.getElementById(`name-${entity.id}`).value;
+        const spaceId = document.getElementById(`selectSpace-${entity.id}`).value;
+        const destinationId = document.getElementById(`selectDestination-${entity.id}`).value;
+        return fetch(`${endpoint}/portals/${entity.id}`, {
+            method: "PATCH",
+            headers: {'Content-Type': 'application/json', 'key': getKey()},
+            body: {
+                name,
+                spaceId,
+                destinationId
+            }
+        }).then(response => {
+            response.json().then(result => {
+                console.log(result);
+
+                let entitySpace = document.getElementById(`space-${entity.id}`);
+                entitySpace.value = entity.space ? entity.space.name : '';
+                let entityDestination = document.getElementById(`destination-${entity.id}`);
+                entityDestination.value = entity.destination ? entity.destination.name : '';
+            })
+        });
+    }
+
+    function portalFindDestination(event, entity, offset = 0, limit = 20, query = '') {
+        const portalDestinationSelector = document.getElementById(`selectDestination-${entity.id}`);
+        portalDestinationSelector.innerHTML = '';
+        fetch(`${endpoint}/portals?offset=${offset}&limit=${limit}&query=${query}`, {
+            method: "GET",
+            headers: {'Content-Type': 'application/json', 'key': getKey()},
+        }).then(res => {
+            res.json().then((json => {
+                for (let k in json.data.entities) {
+                    if (json.data.entities.hasOwnProperty(k)) {
+                        let entity = json.data.entities[k];
+
+                        var option = document.createElement('option');
+                        option.value = JSON.stringify(entity);
+                        option.innerHTML = entity.name;
+                        portalDestinationSelector.appendChild(option);
+                    }
+                }
+            }));
+        });
+    }
+
+    function portalFindSpace(event, entity, offset = 0, limit = 20, query = '') {
+        const portalSpaceSelector = document.getElementById(`selectSpace-${entity.id}`);
+        portalSpaceSelector.innerHTML = '';
+        fetch(`${endpoint}/spaces?offset=${offset}&limit=${limit}&query=${query}`, {
+            method: "GET",
+            headers: {'Content-Type': 'application/json', 'key': getKey()},
+        }).then(res => {
+            res.json().then((json => {
+                for (let k in json.data.entities) {
+                    if (json.data.entities.hasOwnProperty(k)) {
+                        let entity = json.data.entities[k];
+
+                        var option = document.createElement('option');
+                        option.value = JSON.stringify(entity);
+                        option.innerHTML = entity.name;
+                        portalSpaceSelector.appendChild(option);
+                    }
+                }
+            }));
+        });
+    }
+
+    function updatePortalList(offset = 0, limit = 20, query = '') {
+        fetch(`${endpoint}/portals?offset=${offset}&limit=${limit}&query=${query}`, {
+            method: "GET",
+            headers: {'Content-Type': 'application/json', 'key': getKey()}
+        }).then(res => {
+            res.json().then(j => {
+                portalList.innerHTML = '';
+                portalTotalPages = Math.ceil(j.data.total / portalListPerPage);
+                portalListTotalPagesLabel.innerText = portalTotalPages
+                for (let k in j.data.entities) {
+                    if (j.data.entities.hasOwnProperty(k)) {
+                        let entity = j.data.entities[k];
+
+                        let entityHtml = portalListItemTemplate;
+                        if (entity.id) {
+                            entityHtml = entityHtml
+                                .replaceAll('#id', entity.id);
+                        }
+
+                        if (entity.name) {
+                            entityHtml = entityHtml.replaceAll('#name', entity.name);
+                        } else {
+                            entityHtml = entityHtml.replaceAll('#name', '');
+                        }
+
+                        if (entity.space) {
+                            entityHtml = entityHtml.replaceAll('#space', entity.space.name);
+                        } else {
+                            entityHtml = entityHtml.replaceAll('#space', '');
+                        }
+
+                        if (entity.destination) {
+                            entityHtml = entityHtml.replaceAll('#destination', entity.destination.name);
+                        } else {
+                            entityHtml = entityHtml.replaceAll('#destination', '');
+                        }
+
+                        let tableRowElement = document.createElement('tr');
+                        tableRowElement.innerHTML = `${entityHtml}`;
+                        portalList.appendChild(tableRowElement);
+
+                        let saveBtn = document.getElementById(`save-${entity.id}`);
+                        saveBtn.addEventListener('click', (event) => {
+                            portalSave(event, entity);
+                        });
+
+                        let entitySpace = document.getElementById(`space-${entity.id}`);
+                        entitySpace.value = entity.space ? entity.space.name : '';
+                        let findSpaceBtn = document.getElementById(`findSpaceBtn-${entity.id}`);
+                        findSpaceBtn.addEventListener('click', (event) => {
+                            portalFindSpace(event, entity, 0, 20, document.getElementById(`findSpace-${entity.id}`).value);
+                        });
+
+                        let entityDestination = document.getElementById(`destination-${entity.id}`);
+                        entityDestination.value = entity.destination ? entity.destination.name : '';
+                        let findDestinationBtn = document.getElementById(`findDestinationBtn-${entity.id}`);
+                        findDestinationBtn.addEventListener('click', (event) => {
+                            portalFindDestination(event, entity, 0, 20, document.getElementById(`findDestination-${entity.id}`).value);
+                        });
+                    }
+                }
+            });
+        });
+    }
+</script>
+</body>
+</html>
